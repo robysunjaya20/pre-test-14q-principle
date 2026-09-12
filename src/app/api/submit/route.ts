@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
  * Google Apps Script Web App
  */
 const SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbyAkBLk99dbLdDByCiITO0sfeapD1KMyuX6VivPhjHJ4QJa2i9INvsykA14ta840mpGpg/exec";
+  "https://script.google.com/macros/s/AKfycbx7MKw5wWY02raFbLknE5tBbhuu11eKc5OHRK0uLwMmqDQnx8gg8iYLMOWrP7BYC1MJmA/exec";
 
 
 export async function POST(
