@@ -2,6 +2,18 @@
 
 import { useState } from "react";
 
+import Soal, {
+  Implementation,
+  AnswerDetail,
+} from "./soal";
+
+import { KUNCI_JAWABAN } from "./kuncijawaban";
+
+
+// ==========================================================
+// DEPARTMENT
+// ==========================================================
+
 const departments = [
   "IQC",
   "OQC",
@@ -9,17 +21,10 @@ const departments = [
   "Assy Mirror",
 ];
 
-type Implementation = {
-  list: string;
-  area: string;
-};
 
-type AnswerDetail = {
-  nomor: number;
-  jawabanPeserta: string;
-  jawabanBenar: string;
-  benar: boolean | string | number;
-};
+// ==========================================================
+// RESULT
+// ==========================================================
 
 type ResultData = {
   benar: number;
@@ -28,21 +33,29 @@ type ResultData = {
   details: AnswerDetail[];
 };
 
+
+// ==========================================================
+// HOME
+// ==========================================================
+
 export default function Home() {
-  // ==========================================
-  // TANGGAL
-  // ==========================================
 
-  const today = new Date()
-    .toISOString()
-    .split("T")[0];
+  // ========================================================
+  // TANGGAL HARI INI
+  // ========================================================
+
+  const today =
+    new Date()
+      .toISOString()
+      .split("T")[0];
 
 
-  // ==========================================
+  // ========================================================
   // DATA PESERTA
-  // ==========================================
+  // ========================================================
 
-  const [nama, setNama] = useState("");
+  const [nama, setNama] =
+    useState("");
 
   const [department, setDepartment] =
     useState("");
@@ -51,9 +64,9 @@ export default function Home() {
     useState(today);
 
 
-  // ==========================================
+  // ========================================================
   // JAWABAN 14Q
-  // ==========================================
+  // ========================================================
 
   const [q14Answers, setQ14Answers] =
     useState<string[]>(
@@ -61,9 +74,9 @@ export default function Home() {
     );
 
 
-  // ==========================================
-  // IMPLEMENTASI
-  // ==========================================
+  // ========================================================
+  // IMPLEMENTASI 14Q
+  // ========================================================
 
   const [implementations, setImplementations] =
     useState<Implementation[]>(
@@ -77,9 +90,9 @@ export default function Home() {
     );
 
 
-  // ==========================================
+  // ========================================================
   // STATUS
-  // ==========================================
+  // ========================================================
 
   const [submitted, setSubmitted] =
     useState(false);
@@ -90,282 +103,433 @@ export default function Home() {
   const [error, setError] =
     useState("");
 
+  const [saveStatus, setSaveStatus] =
+    useState("");
 
-  // ==========================================
+
+  // ========================================================
   // HASIL
-  // ==========================================
+  // ========================================================
 
   const [result, setResult] =
     useState<ResultData | null>(null);
 
 
-  // ==========================================
-  // UPDATE JAWABAN
-  // ==========================================
+  // ========================================================
+  // NORMALIZE JAWABAN
+  // ========================================================
+
+  const normalizeAnswer = (
+    value: string
+  ) => {
+
+    return String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, " ");
+
+  };
+
+
+  // ========================================================
+  // CEK JAWABAN
+  // ========================================================
+
+  const checkAnswer = (
+    answer: string,
+    nomor: number
+  ) => {
+
+    const peserta =
+      normalizeAnswer(answer);
+
+
+    // Jawaban kosong = salah
+
+    if (!peserta) {
+      return false;
+    }
+
+
+    // Ambil kunci berdasarkan nomor
+
+    const kunci =
+      KUNCI_JAWABAN[
+        nomor - 1
+      ];
+
+
+    if (!kunci) {
+      return false;
+    }
+
+
+    // Cek seluruh alternatif jawaban
+
+    return kunci.some(
+      (item) =>
+        normalizeAnswer(item) ===
+        peserta
+    );
+
+  };
+
+
+  // ========================================================
+  // UPDATE JAWABAN 14Q
+  // ========================================================
 
   const updateQ14 = (
     index: number,
     value: string
   ) => {
+
     const updated =
       [...q14Answers];
 
     updated[index] = value;
 
     setQ14Answers(updated);
+
   };
 
 
-  // ==========================================
+  // ========================================================
   // UPDATE IMPLEMENTASI
-  // ==========================================
+  // ========================================================
 
   const updateImplementation = (
     index: number,
     field: "list" | "area",
     value: string
   ) => {
+
     const updated =
       [...implementations];
+
 
     updated[index] = {
       ...updated[index],
       [field]: value,
     };
 
-    setImplementations(updated);
+
+    setImplementations(
+      updated
+    );
+
   };
 
 
-  // ==========================================
+  // ========================================================
   // SUBMIT
-  // ==========================================
+  // ========================================================
 
-  const handleSubmit = async (
+  const handleSubmit = (
     e: React.FormEvent<HTMLFormElement>
   ) => {
+
     e.preventDefault();
+
+
+    // ------------------------------------------------------
+    // RESET ERROR / STATUS
+    // ------------------------------------------------------
 
     setError("");
 
+    setSaveStatus("");
 
-    // ------------------------------------------
+
+    // ------------------------------------------------------
     // VALIDASI NAMA
-    // ------------------------------------------
+    // ------------------------------------------------------
 
     if (!nama.trim()) {
+
       setError(
         "Nama wajib diisi."
       );
 
+
       window.scrollTo({
         top: 0,
         behavior: "smooth",
       });
 
+
       return;
     }
 
 
-    // ------------------------------------------
+    // ------------------------------------------------------
     // VALIDASI DEPARTMENT
-    // ------------------------------------------
+    // ------------------------------------------------------
 
     if (!department) {
+
       setError(
         "Department wajib dipilih."
       );
 
+
       window.scrollTo({
         top: 0,
         behavior: "smooth",
       });
+
 
       return;
     }
 
 
-    // ------------------------------------------
-    // LOADING
-    // ------------------------------------------
+    // ======================================================
+    // HITUNG HASIL LANGSUNG DI FRONTEND
+    // ======================================================
+
+    const details: AnswerDetail[] =
+      q14Answers.map(
+        (answer, index) => {
+
+          const nomor =
+            index + 1;
+
+
+          const benar =
+            checkAnswer(
+              answer,
+              nomor
+            );
+
+
+          return {
+
+            nomor,
+
+            jawabanPeserta:
+              answer,
+
+            // Ini hanya digunakan
+            // secara internal untuk
+            // menentukan hasil.
+            //
+            // Tidak ditampilkan
+            // kepada peserta.
+
+            jawabanBenar:
+              KUNCI_JAWABAN[
+                index
+              ].join(" / "),
+
+            benar,
+
+          };
+
+        }
+      );
+
+
+    // ======================================================
+    // JUMLAH BENAR
+    // ======================================================
+
+    const jumlahBenar =
+      details.filter(
+        (item) =>
+          item.benar
+      ).length;
+
+
+    const total = 14;
+
+
+    // ======================================================
+    // NILAI
+    // ======================================================
+
+    const nilai =
+      Math.round(
+        (jumlahBenar / total) *
+        100
+      );
+
+
+    // ======================================================
+    // TAMPILKAN HASIL SEKARANG
+    //
+    // TIDAK MENUNGGU API
+    // ======================================================
+
+    setResult({
+
+      benar:
+        jumlahBenar,
+
+      total:
+        total,
+
+      nilai:
+        nilai,
+
+      details:
+        details,
+
+    });
+
+
+    // ======================================================
+    // SUBMITTED LANGSUNG
+    // ======================================================
+
+    setSubmitted(true);
+
+
+    // ======================================================
+    // SCROLL KE HASIL
+    // ======================================================
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+
+
+    // ======================================================
+    // SIMPAN KE GOOGLE SHEETS
+    //
+    // BERJALAN DI BACKGROUND
+    // ======================================================
 
     setLoading(true);
 
+    setSaveStatus(
+      "Menyimpan jawaban ke sistem..."
+    );
 
-    try {
 
-      // ----------------------------------------
-      // KIRIM DATA KE API
-      // ----------------------------------------
+    // ======================================================
+    // FETCH TANPA AWAIT
+    //
+    // Hasil peserta tidak menunggu proses ini.
+    // ======================================================
 
-      const response =
-        await fetch(
-          "/api/submit",
-          {
-            method: "POST",
+    void fetch(
+      "/api/submit",
+      {
 
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
+        method: "POST",
 
-            body: JSON.stringify({
-              nama,
-              department,
-              tanggal,
-              q14Answers,
-              implementations,
-            }),
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+
+        body: JSON.stringify({
+
+          nama,
+
+          department,
+
+          tanggal,
+
+          q14Answers,
+
+          implementations,
+
+          // Hasil frontend
+          // dikirim langsung
+          // untuk disimpan.
+
+          benar:
+            jumlahBenar,
+
+          total,
+
+          nilai,
+
+        }),
+
+      }
+    )
+      .then(
+        async (response) => {
+
+          let data: any = null;
+
+
+          try {
+
+            data =
+              await response.json();
+
+          } catch {
+
+            data = null;
+
           }
-        );
 
 
-      // ----------------------------------------
-      // RESPONSE
-      // ----------------------------------------
+          if (
+            !response.ok ||
+            !data?.success
+          ) {
 
-      const data =
-        await response.json();
+            throw new Error(
+              data?.message ||
+              "Data gagal disimpan."
+            );
+
+          }
 
 
-      console.log(
-        "Response submit:",
-        data
+          console.log(
+            "Data berhasil disimpan:",
+            data
+          );
+
+
+          setSaveStatus(
+            "✓ Jawaban berhasil disimpan."
+          );
+
+        }
+      )
+      .catch(
+        (err) => {
+
+          console.error(
+            "Background save error:",
+            err
+          );
+
+
+          setSaveStatus(
+            "⚠ Hasil sudah ditampilkan, tetapi penyimpanan gagal."
+          );
+
+
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Gagal menyimpan jawaban."
+          );
+
+        }
+      )
+      .finally(
+        () => {
+
+          setLoading(false);
+
+        }
       );
 
-
-      // ----------------------------------------
-      // ERROR HTTP
-      // ----------------------------------------
-
-      if (!response.ok) {
-        throw new Error(
-          data.message ||
-          "Gagal mengirim data."
-        );
-      }
-
-
-      // ----------------------------------------
-      // ERROR SERVER
-      // ----------------------------------------
-
-      if (!data.success) {
-        throw new Error(
-          data.message ||
-          "Jawaban gagal disimpan."
-        );
-      }
-
-
-      // ----------------------------------------
-      // SIMPAN DETAILS
-      // ----------------------------------------
-
-      const details: AnswerDetail[] =
-        Array.isArray(data.details)
-          ? data.details.map(
-              (item: any) => ({
-                nomor:
-                  Number(
-                    item?.nomor
-                  ),
-
-                jawabanPeserta:
-                  String(
-                    item?.jawabanPeserta ??
-                    ""
-                  ),
-
-                jawabanBenar:
-                  String(
-                    item?.jawabanBenar ??
-                    ""
-                  ),
-
-                benar:
-                  item?.benar,
-              })
-            )
-          : [];
-
-
-      console.log(
-        "Details:",
-        details
-      );
-
-
-      // ----------------------------------------
-      // SIMPAN HASIL
-      // ----------------------------------------
-
-      setResult({
-
-        benar:
-          Number(
-            data.benar ?? 0
-          ),
-
-        total:
-          Number(
-            data.total ?? 14
-          ),
-
-        nilai:
-          Number(
-            data.nilai ?? 0
-          ),
-
-        details,
-      });
-
-
-      // ----------------------------------------
-      // SUBMITTED
-      // ----------------------------------------
-
-      setSubmitted(true);
-
-
-      // ----------------------------------------
-      // SCROLL KE ATAS
-      // ----------------------------------------
-
-      window.scrollTo({
-        top: 0,
-        behavior: "smooth",
-      });
-
-    } catch (err) {
-
-      console.error(
-        "Submit error:",
-        err
-      );
-
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Jawaban gagal disimpan."
-      );
-
-      window.scrollTo({
-        top: 0,
-        behavior: "smooth",
-      });
-
-    } finally {
-
-      setLoading(false);
-
-    }
   };
 
 
-  // ==========================================
-  // RESET
-  // ==========================================
+  // ========================================================
+  // RESET / TEST BARU
+  // ========================================================
 
   const handleReset = () => {
 
@@ -375,9 +539,11 @@ export default function Home() {
 
     setTanggal(today);
 
+
     setQ14Answers(
       Array(14).fill("")
     );
+
 
     setImplementations(
       Array.from(
@@ -389,24 +555,29 @@ export default function Home() {
       )
     );
 
+
     setSubmitted(false);
 
     setLoading(false);
 
     setError("");
 
+    setSaveStatus("");
+
     setResult(null);
+
 
     window.scrollTo({
       top: 0,
       behavior: "smooth",
     });
+
   };
 
 
-  // ==========================================
-  // CARI DETAIL SOAL
-  // ==========================================
+  // ========================================================
+  // CARI DETAIL JAWABAN
+  // ========================================================
 
   const getAnswerDetail = (
     nomor: number
@@ -418,126 +589,122 @@ export default function Home() {
         result.details
       )
     ) {
+
       return undefined;
+
     }
+
 
     return result.details.find(
       (item) =>
-        Number(item.nomor) === nomor
+        Number(
+          item.nomor
+        ) === nomor
     );
+
   };
 
 
-  // ==========================================
+  // ========================================================
   // CEK BENAR / SALAH
-  // ==========================================
+  // ========================================================
 
   const isAnswerCorrect = (
     nomor: number
   ): boolean => {
 
     const detail =
-      getAnswerDetail(nomor);
+      getAnswerDetail(
+        nomor
+      );
+
 
     if (!detail) {
       return false;
     }
 
-    const value =
-      detail.benar;
 
+    return detail.benar;
 
-    // Boolean
-    if (value === true) {
-      return true;
-    }
-
-    if (value === false) {
-      return false;
-    }
-
-
-    // Number
-    if (value === 1) {
-      return true;
-    }
-
-    if (value === 0) {
-      return false;
-    }
-
-
-    // String
-    const text =
-      String(value)
-        .trim()
-        .toLowerCase();
-
-    return (
-      text === "true" ||
-      text === "1" ||
-      text === "benar" ||
-      text === "yes" ||
-      text === "ya"
-    );
   };
 
 
-  // ==========================================
+  // ========================================================
   // CLASS NOMOR
-  // ==========================================
+  // ========================================================
 
   const getNumberClass = (
     nomor: number
   ) => {
 
     if (!submitted) {
+
       return "numberCell";
+
     }
 
-    return isAnswerCorrect(nomor)
+
+    return isAnswerCorrect(
+      nomor
+    )
+
       ? "numberCell correctCell"
+
       : "numberCell wrongCell";
+
   };
 
 
-  // ==========================================
+  // ========================================================
   // CLASS JAWABAN
-  // ==========================================
+  // ========================================================
 
   const getAnswerClass = (
     nomor: number
   ) => {
 
     if (!submitted) {
+
       return "";
+
     }
 
-    return isAnswerCorrect(nomor)
+
+    return isAnswerCorrect(
+      nomor
+    )
+
       ? "answerCellCorrect"
+
       : "answerCellWrong";
+
   };
 
 
-  // ==========================================
+  // ========================================================
   // RENDER
-  // ==========================================
+  // ========================================================
 
   return (
+
     <main className="page">
 
       <div className="container">
 
 
-        {/*HEADER*/}
+        {/* ==================================================
+            HEADER
+        =================================================== */}
 
         <header className="header">
+
 
           <div className="brand">
 
             <div className="brandLogo">
               BUMJIN
             </div>
+
 
             <div className="brandText">
 
@@ -566,21 +733,27 @@ export default function Home() {
             PRE TEST
           </p>
 
+
         </header>
 
 
-        {/*HASIL*/}
+        {/* ==================================================
+            HASIL
+        =================================================== */}
 
         {submitted &&
           result && (
 
             <div className="resultBox">
 
+
               <div className="resultTop">
+
 
                 <div className="resultIcon">
                   ✓
                 </div>
+
 
                 <div>
 
@@ -588,19 +761,27 @@ export default function Home() {
                     Test Selesai
                   </h2>
 
+
                   <p>
+
                     Terima kasih,{" "}
+
                     <strong>
                       {nama}
                     </strong>
+
                   </p>
 
                 </div>
 
+
               </div>
 
 
+              {/* SCORE */}
+
               <div className="score">
+
 
                 <div className="scoreItem">
 
@@ -608,10 +789,15 @@ export default function Home() {
                     Jawaban Benar
                   </span>
 
+
                   <strong>
+
                     {result.benar}
+
                     {" / "}
+
                     {result.total}
+
                   </strong>
 
                 </div>
@@ -623,14 +809,18 @@ export default function Home() {
                     Nilai
                   </span>
 
+
                   <strong>
                     {result.nilai}
                   </strong>
 
                 </div>
 
+
               </div>
 
+
+              {/* LEGEND */}
 
               <div className="legend">
 
@@ -638,18 +828,33 @@ export default function Home() {
                   ✓ Benar
                 </span>
 
+
                 <span className="legendWrong">
                   ✕ Salah
                 </span>
 
               </div>
 
+
+              {/* STATUS PENYIMPANAN */}
+
+              {saveStatus && (
+
+                <div className="saveStatus">
+                  {saveStatus}
+                </div>
+
+              )}
+
+
             </div>
 
           )}
 
 
-        {/*ERROR*/}
+        {/* ==================================================
+            ERROR
+        =================================================== */}
 
         {error && (
 
@@ -658,6 +863,7 @@ export default function Home() {
             <span>
               ⚠
             </span>
+
 
             <p>
               {error}
@@ -668,24 +874,29 @@ export default function Home() {
         )}
 
 
-        {/*FORM*/}
+        {/* ==================================================
+            FORM
+        =================================================== */}
 
         <form
           onSubmit={handleSubmit}
         >
 
 
-          {/* ==================================
+          {/* ==================================================
               DATA PESERTA
-          =================================== */}
+          =================================================== */}
 
           <section className="card">
 
+
             <div className="sectionTitle">
+
 
               <div className="sectionNumber">
                 A
               </div>
+
 
               <div>
 
@@ -693,11 +904,13 @@ export default function Home() {
                   DATA PESERTA
                 </h2>
 
+
                 <p>
                   Silakan isi data diri Anda
                 </p>
 
               </div>
+
 
             </div>
 
@@ -710,9 +923,15 @@ export default function Home() {
               <div className="formGroup">
 
                 <label>
+
                   Nama
-                  <span>*</span>
+
+                  <span>
+                    *
+                  </span>
+
                 </label>
+
 
                 <input
                   type="text"
@@ -734,9 +953,15 @@ export default function Home() {
               <div className="formGroup">
 
                 <label>
+
                   Department
-                  <span>*</span>
+
+                  <span>
+                    *
+                  </span>
+
                 </label>
+
 
                 <select
                   value={department}
@@ -751,6 +976,7 @@ export default function Home() {
                   <option value="">
                     Pilih Department
                   </option>
+
 
                   {departments.map(
                     (item) => (
@@ -778,6 +1004,7 @@ export default function Home() {
                   Tanggal
                 </label>
 
+
                 <input
                   type="date"
                   value={tanggal}
@@ -791,393 +1018,67 @@ export default function Home() {
 
               </div>
 
+
             </div>
+
 
           </section>
 
 
-          {/* ==================================
-              SOAL 1
-          =================================== */}
+          {/* ==================================================
+              SOAL
+              
+              Semua Soal 1 & 2 sekarang
+              dipindahkan ke soal.tsx
+          =================================================== */}
 
-          <section className="card">
+          <Soal
 
-            <div className="questionHeader">
+            q14Answers={
+              q14Answers
+            }
 
-              <div className="questionNumber">
-                1
-              </div>
+            implementations={
+              implementations
+            }
 
-              <div className="questionText">
+            submitted={
+              submitted
+            }
 
-                <h2>
-                  Sebutkan total 14Q Basics
-                  Principle menurut yang Anda
-                  ketahui:
-                </h2>
+            updateQ14={
+              updateQ14
+            }
 
-                <p>
-                  Tuliskan nama dari masing-masing
-                  14Q Basics Principle.
-                </p>
+            updateImplementation={
+              updateImplementation
+            }
 
-              </div>
+            getAnswerDetail={
+              getAnswerDetail
+            }
 
-            </div>
+            isAnswerCorrect={
+              isAnswerCorrect
+            }
 
+            getNumberClass={
+              getNumberClass
+            }
 
-            <div className="tableContainer">
+            getAnswerClass={
+              getAnswerClass
+            }
 
-              <table className="q14Table">
+          />
 
-                <thead>
 
-                  <tr>
-
-                    <th>
-                      No.
-                    </th>
-
-                    <th>
-                      14Q Name
-                    </th>
-
-                    <th>
-                      No.
-                    </th>
-
-                    <th>
-                      14Q Name
-                    </th>
-
-                  </tr>
-
-                </thead>
-
-
-                <tbody>
-
-                  {Array.from({
-                    length: 7,
-                  }).map(
-                    (_, index) => {
-
-                      const leftNomor =
-                        index + 1;
-
-                      const rightNomor =
-                        index + 8;
-
-
-                      const leftResult =
-                        getAnswerDetail(
-                          leftNomor
-                        );
-
-                      const rightResult =
-                        getAnswerDetail(
-                          rightNomor
-                        );
-
-
-                      const leftCorrect =
-                        isAnswerCorrect(
-                          leftNomor
-                        );
-
-                      const rightCorrect =
-                        isAnswerCorrect(
-                          rightNomor
-                        );
-
-
-                      return (
-
-                        <tr
-                          key={index}
-                        >
-
-
-                          {/* =========================
-                              NOMOR KIRI
-                          ========================== */}
-
-                          <td
-                            className={
-                              getNumberClass(
-                                leftNomor
-                              )
-                            }
-                          >
-                            {leftNomor}
-                          </td>
-
-
-                          {/* =========================
-                              JAWABAN KIRI
-                          ========================== */}
-
-                          <td
-                            className={
-                              getAnswerClass(
-                                leftNomor
-                              )
-                            }
-                          >
-
-                            <input
-                              type="text"
-                              value={
-                                q14Answers[
-                                  leftNomor - 1
-                                ]
-                              }
-                              onChange={(e) =>
-                                updateQ14(
-                                  leftNomor - 1,
-                                  e.target.value
-                                )
-                              }
-                              placeholder="Tulis jawaban..."
-                              disabled={submitted}
-                            />
-
-
-                            {submitted &&
-                              leftResult && (
-
-                                <div
-                                  className={
-                                    leftCorrect
-                                      ? "answerResult answerResultCorrect"
-                                      : "answerResult answerResultWrong"
-                                  }
-                                >
-
-                                  {leftCorrect
-                                    ? "✓ Benar"
-                                    : "✕ Salah"}
-
-                                </div>
-
-                              )}
-
-                          </td>
-
-
-                          {/* =========================
-                              NOMOR KANAN
-                          ========================== */}
-
-                          <td
-                            className={
-                              getNumberClass(
-                                rightNomor
-                              )
-                            }
-                          >
-                            {rightNomor}
-                          </td>
-
-
-                          {/* =========================
-                              JAWABAN KANAN
-                          ========================== */}
-
-                          <td
-                            className={
-                              getAnswerClass(
-                                rightNomor
-                              )
-                            }
-                          >
-
-                            <input
-                              type="text"
-                              value={
-                                q14Answers[
-                                  rightNomor - 1
-                                ]
-                              }
-                              onChange={(e) =>
-                                updateQ14(
-                                  rightNomor - 1,
-                                  e.target.value
-                                )
-                              }
-                              placeholder="Tulis jawaban..."
-                              disabled={submitted}
-                            />
-
-
-                            {submitted &&
-                              rightResult && (
-
-                                <div
-                                  className={
-                                    rightCorrect
-                                      ? "answerResult answerResultCorrect"
-                                      : "answerResult answerResultWrong"
-                                  }
-                                >
-
-                                  {rightCorrect
-                                    ? "✓ Benar"
-                                    : "✕ Salah"}
-
-                                </div>
-
-                              )}
-
-                          </td>
-
-                        </tr>
-
-                      );
-
-                    }
-                  )}
-
-                </tbody>
-
-              </table>
-
-            </div>
-
-          </section>
-
-
-          {/* ==================================
-              SOAL 2
-          =================================== */}
-
-          <section className="card">
-
-            <div className="questionHeader">
-
-              <div className="questionNumber">
-                2
-              </div>
-
-              <div className="questionText">
-
-                <h2>
-                  Sebutkan list 14Q yang sudah
-                  implementasi di PT. Bumjin
-                  menurut yang Anda ketahui,
-                  sebutkan area kerjanya:
-                </h2>
-
-                <p>
-                  Soal ini hanya sebagai catatan
-                  dan tidak masuk perhitungan nilai.
-                </p>
-
-              </div>
-
-            </div>
-
-
-            <div className="tableContainer">
-
-              <table className="implementationTable">
-
-                <thead>
-
-                  <tr>
-
-                    <th>
-                      No.
-                    </th>
-
-                    <th>
-                      List Implementasi
-                      14Q Basics
-                    </th>
-
-                    <th>
-                      Area Kerja
-                    </th>
-
-                  </tr>
-
-                </thead>
-
-
-                <tbody>
-
-                  {implementations.map(
-                    (item, index) => (
-
-                      <tr
-                        key={index}
-                      >
-
-                        <td className="numberCell">
-                          {index + 1}
-                        </td>
-
-
-                        <td>
-
-                          <input
-                            type="text"
-                            value={
-                              item.list
-                            }
-                            onChange={(e) =>
-                              updateImplementation(
-                                index,
-                                "list",
-                                e.target.value
-                              )
-                            }
-                            placeholder="Tulis implementasi..."
-                            disabled={submitted}
-                          />
-
-                        </td>
-
-
-                        <td>
-
-                          <input
-                            type="text"
-                            value={
-                              item.area
-                            }
-                            onChange={(e) =>
-                              updateImplementation(
-                                index,
-                                "area",
-                                e.target.value
-                              )
-                            }
-                            placeholder="Tulis area kerja..."
-                            disabled={submitted}
-                          />
-
-                        </td>
-
-                      </tr>
-
-                    )
-                  )}
-
-                </tbody>
-
-              </table>
-
-            </div>
-
-          </section>
-
-
-          {/* ==================================
+          {/* ==================================================
               BUTTON
-          =================================== */}
+          =================================================== */}
 
           <div className="buttonArea">
+
 
             {!submitted ? (
 
@@ -1187,62 +1088,82 @@ export default function Home() {
                 disabled={loading}
               >
 
+
                 {loading ? (
 
                   <>
+
                     <span>
-                      MENYIMPAN...
+                      MEMPROSES...
                     </span>
 
+
                     <span className="spinner" />
+
                   </>
 
                 ) : (
 
                   <>
+
                     <span>
                       SUBMIT JAWABAN
                     </span>
 
+
                     <span className="arrow">
                       →
                     </span>
+
                   </>
 
                 )}
 
+
               </button>
 
             ) : (
+
 
               <button
                 type="button"
                 className="resetButton"
                 onClick={handleReset}
               >
+
                 ISI TEST BARU
+
               </button>
+
 
             )}
 
+
           </div>
+
 
         </form>
 
 
-        {/*FOOTER*/}
+        {/* ==================================================
+            FOOTER
+        =================================================== */}
 
         <footer className="footer">
 
+
           <div className="footerLine" />
+
 
           <strong>
             SELAMAT MENGERJAKAN !!!
           </strong>
 
+
           <p>
             PT. BUMJIN ELECTRONICS INDONESIA
           </p>
+
 
         </footer>
 
@@ -1250,5 +1171,7 @@ export default function Home() {
       </div>
 
     </main>
+
   );
+
 }

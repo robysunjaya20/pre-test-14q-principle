@@ -1,85 +1,121 @@
 import { NextRequest, NextResponse } from "next/server";
 
-/*Google Apps Script Web App*/
+/**
+ * Google Apps Script Web App
+ */
 const SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbxXCtXfw5B28gwj-eD9hg2m3Ft59u9E4_tuWDcZAT7NHlYZ7kkyxVRzrHD96r6kmYm9-Q/exec";
+  "https://script.google.com/macros/s/AKfycbyAkBLk99dbLdDByCiITO0sfeapD1KMyuX6VivPhjHJ4QJa2i9INvsykA14ta840mpGpg/exec";
 
 
-export async function POST(request: NextRequest) {
+export async function POST(
+  request: NextRequest
+) {
+
   try {
-    console.log("=================================");
-    console.log("SUBMIT 14Q ASSESSMENT");
-    console.log("=================================");
 
-    // AMBIL DATA DARI FRONTEND
+    console.log(
+      "================================="
+    );
 
-    const body = await request.text();
+    console.log(
+      "SUBMIT 14Q ASSESSMENT"
+    );
 
-    console.log("Request body:");
-    console.log(body);
-    console.log("=================================");
+    console.log(
+      "================================="
+    );
 
 
-    // CEK DATA
+    // AMBIL BODY
 
-    if (!body || body.trim() === "") {
+    const body =
+      await request.text();
+
+
+    console.log(
+      "Request body:",
+      body
+    );
+
+
+    // CEK BODY
+
+    if (
+      !body ||
+      body.trim() === ""
+    ) {
+
       return NextResponse.json(
         {
           success: false,
-          message: "Data yang dikirim kosong.",
+          message:
+            "Data yang dikirim kosong.",
         },
         {
           status: 400,
         }
       );
+
     }
 
 
-    // KIRIM DATA KE GOOGLE APPS SCRIPT
+    // KIRIM KE GOOGLE APPS SCRIPT
 
-    console.log("Mengirim data ke Google Apps Script...");
+    const response =
+      await fetch(
+        SCRIPT_URL,
+        {
 
-    const response = await fetch(
-      SCRIPT_URL,
-      {
-        method: "POST",
+          method: "POST",
 
-        headers: {
-          "Content-Type":
-            request.headers.get("content-type") ||
-            "application/json",
-        },
+          headers: {
 
-        body: body,
+            "Content-Type":
+              request.headers.get(
+                "content-type"
+              ) ||
+              "application/json",
 
-        redirect: "follow",
+          },
 
-        cache: "no-store",
-      }
-    );
+          body: body,
+
+          redirect: "follow",
+
+          cache: "no-store",
+
+        }
+      );
 
 
-    // BACA RESPONSE GOOGLE APPS SCRIPT
+    // BACA RESPONSE
 
     const responseText =
       await response.text();
 
-    console.log("=================================");
-    console.log("GOOGLE APPS SCRIPT RESPONSE");
-    console.log("HTTP Status:", response.status);
-    console.log("Response:");
-    console.log(responseText);
-    console.log("=================================");
+
+    console.log(
+      "Google HTTP Status:",
+      response.status
+    );
 
 
-    // JIKA RESPONSE KOSONG
+    console.log(
+      "Google Response:",
+      responseText
+    );
+
+
+    // RESPONSE KOSONG
 
     if (
       !responseText ||
       responseText.trim() === ""
     ) {
+
       return NextResponse.json(
         {
+
           success: false,
 
           message:
@@ -87,11 +123,13 @@ export async function POST(request: NextRequest) {
 
           status:
             response.status,
+
         },
         {
           status: 502,
         }
       );
+
     }
 
 
@@ -99,9 +137,14 @@ export async function POST(request: NextRequest) {
 
     let data: any;
 
+
     try {
+
       data =
-        JSON.parse(responseText);
+        JSON.parse(
+          responseText
+        );
+
     } catch (error) {
 
       console.error(
@@ -112,8 +155,10 @@ export async function POST(request: NextRequest) {
         responseText
       );
 
+
       return NextResponse.json(
         {
+
           success: false,
 
           message:
@@ -127,28 +172,29 @@ export async function POST(request: NextRequest) {
               0,
               2000
             ),
+
         },
         {
           status: 502,
         }
       );
+
     }
 
 
-    // GOOGLE APPS SCRIPT MENGEMBALIKAN ERROR
+    // GOOGLE SCRIPT ERROR
 
     if (!data.success) {
 
       console.error(
-        "Google Apps Script gagal:"
-      );
-
-      console.error(
+        "Google Apps Script gagal:",
         data
       );
 
+
       return NextResponse.json(
         {
+
           success: false,
 
           message:
@@ -187,31 +233,30 @@ export async function POST(request: NextRequest) {
             data.nilai ??
             0,
 
-          score:
-            data.score ||
-            "",
-
           details:
-            Array.isArray(data.details)
+            Array.isArray(
+              data.details
+            )
               ? data.details
               : [],
+
         },
         {
           status: 500,
         }
       );
+
     }
 
 
-    // DATA BERHASIL DISIMPAN
-
-    console.log("=================================");
-    console.log("DATA BERHASIL DISIMPAN");
-    console.log("=================================");
+    // BERHASIL
 
     console.log(
-      "Row:",
-      data.row
+      "================================="
+    );
+
+    console.log(
+      "DATA BERHASIL DISIMPAN"
     );
 
     console.log(
@@ -225,18 +270,8 @@ export async function POST(request: NextRequest) {
     );
 
     console.log(
-      "Tanggal:",
-      data.tanggal
-    );
-
-    console.log(
       "Benar:",
       data.benar
-    );
-
-    console.log(
-      "Total:",
-      data.total
     );
 
     console.log(
@@ -245,18 +280,15 @@ export async function POST(request: NextRequest) {
     );
 
     console.log(
-      "Details:",
-      data.details
+      "================================="
     );
 
-    console.log(
-      "=================================");
 
-
-    // KIRIM HASIL KEMBALI KE FRONTEND
+    // KIRIM KE FRONTEND
 
     return NextResponse.json(
       {
+
         success: true,
 
         message:
@@ -291,23 +323,21 @@ export async function POST(request: NextRequest) {
           data.nilai ??
           0,
 
-        score:
-          data.score ||
-          "",
-
         details:
-          Array.isArray(data.details)
+          Array.isArray(
+            data.details
+          )
             ? data.details
             : [],
+
       },
       {
         status: 200,
       }
     );
 
-  } catch (error) {
 
-    // ERROR NEXT.JS
+  } catch (error) {
 
     console.error(
       "================================="
@@ -328,6 +358,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       {
+
         success: false,
 
         message:
@@ -337,10 +368,13 @@ export async function POST(request: NextRequest) {
           error instanceof Error
             ? error.message
             : String(error),
+
       },
       {
         status: 500,
       }
     );
+
   }
+
 }
