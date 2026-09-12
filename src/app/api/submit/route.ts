@@ -1,177 +1,111 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export const runtime = "nodejs";
+/*Google Apps Script Web App*/
+const SCRIPT_URL =
+  "https://script.google.com/macros/s/AKfycbxXCtXfw5B28gwj-eD9hg2m3Ft59u9E4_tuWDcZAT7NHlYZ7kkyxVRzrHD96r6kmYm9-Q/exec";
 
-const GOOGLE_SCRIPT_URL =
-  process.env.GOOGLE_SCRIPT_URL;
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     console.log("=================================");
-    console.log("API SUBMIT DIMULAI");
+    console.log("SUBMIT 14Q ASSESSMENT");
     console.log("=================================");
 
-    // ==========================================
-    // CEK ENV
-    // ==========================================
+    // AMBIL DATA DARI FRONTEND
 
-    if (!GOOGLE_SCRIPT_URL) {
-      console.error(
-        "GOOGLE_SCRIPT_URL tidak ditemukan"
-      );
+    const body = await request.text();
 
+    console.log("Request body:");
+    console.log(body);
+    console.log("=================================");
+
+
+    // CEK DATA
+
+    if (!body || body.trim() === "") {
       return NextResponse.json(
         {
           success: false,
-          message:
-            "GOOGLE_SCRIPT_URL tidak ditemukan di .env.local",
+          message: "Data yang dikirim kosong.",
         },
-        { status: 500 }
+        {
+          status: 400,
+        }
       );
     }
 
-    console.log(
-      "Google Script URL:",
-      GOOGLE_SCRIPT_URL
-    );
 
+    // KIRIM DATA KE GOOGLE APPS SCRIPT
 
-    // ==========================================
-    // BACA DATA
-    // ==========================================
+    console.log("Mengirim data ke Google Apps Script...");
 
-    const data = await request.json();
+    const response = await fetch(
+      SCRIPT_URL,
+      {
+        method: "POST",
 
-    console.log(
-      "Data peserta:",
-      data.nama,
-      data.department
-    );
-
-
-    // ==========================================
-    // KIRIM KE GOOGLE APPS SCRIPT
-    // ==========================================
-
-    let googleResponse: Response;
-
-    try {
-
-      googleResponse = await fetch(
-        GOOGLE_SCRIPT_URL,
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-
-          body: JSON.stringify(data),
-
-          redirect: "follow",
-
-          cache: "no-store",
-
-          signal: AbortSignal.timeout(
-            30000
-          ),
-        }
-      );
-
-    } catch (error) {
-
-      console.error(
-        "GAGAL CONNECT KE GOOGLE APPS SCRIPT:"
-      );
-
-      console.error(error);
-
-      return NextResponse.json(
-        {
-          success: false,
-
-          message:
-            "Next.js tidak dapat terhubung ke Google Apps Script.",
-
-          detail:
-            error instanceof Error
-              ? error.message
-              : String(error),
-
-          url:
-            GOOGLE_SCRIPT_URL,
+        headers: {
+          "Content-Type":
+            request.headers.get("content-type") ||
+            "application/json",
         },
-        {
-          status: 502,
-        }
-      );
 
-    }
+        body: body,
+
+        redirect: "follow",
+
+        cache: "no-store",
+      }
+    );
 
 
-    // ==========================================
-    // BACA RESPONSE
-    // ==========================================
+    // BACA RESPONSE GOOGLE APPS SCRIPT
 
     const responseText =
-      await googleResponse.text();
+      await response.text();
 
-    console.log(
-      "Google HTTP Status:",
-      googleResponse.status
-    );
-
-    console.log(
-      "Google Response:",
-      responseText
-    );
+    console.log("=================================");
+    console.log("GOOGLE APPS SCRIPT RESPONSE");
+    console.log("HTTP Status:", response.status);
+    console.log("Response:");
+    console.log(responseText);
+    console.log("=================================");
 
 
-    // ==========================================
-    // CEK STATUS
-    // ==========================================
+    // JIKA RESPONSE KOSONG
 
-    if (!googleResponse.ok) {
-
+    if (
+      !responseText ||
+      responseText.trim() === ""
+    ) {
       return NextResponse.json(
         {
           success: false,
 
           message:
-            `Google Apps Script mengembalikan HTTP ${googleResponse.status}`,
+            "Google Apps Script tidak mengembalikan response.",
 
-          detail:
-            responseText.substring(
-              0,
-              1000
-            ),
+          status:
+            response.status,
         },
         {
           status: 502,
         }
       );
-
     }
 
 
-    // ==========================================
     // PARSE JSON
-    // ==========================================
 
-    let result;
+    let data: any;
 
     try {
-
-      result =
-        JSON.parse(
-          responseText
-        );
-
+      data =
+        JSON.parse(responseText);
     } catch (error) {
 
       console.error(
-        "Response Google bukan JSON:"
+        "Response Google Apps Script bukan JSON."
       );
 
       console.error(
@@ -183,44 +117,212 @@ export async function POST(request: Request) {
           success: false,
 
           message:
-            "Google Apps Script tidak mengembalikan JSON.",
+            "Response Google Apps Script bukan JSON.",
+
+          status:
+            response.status,
 
           detail:
             responseText.substring(
               0,
-              1000
+              2000
             ),
         },
         {
           status: 502,
         }
       );
-
     }
 
 
-    // ==========================================
-    // RETURN
-    // ==========================================
+    // GOOGLE APPS SCRIPT MENGEMBALIKAN ERROR
+
+    if (!data.success) {
+
+      console.error(
+        "Google Apps Script gagal:"
+      );
+
+      console.error(
+        data
+      );
+
+      return NextResponse.json(
+        {
+          success: false,
+
+          message:
+            data.message ||
+            "Google Apps Script gagal menyimpan data.",
+
+          detail:
+            data.detail ||
+            "",
+
+          row:
+            data.row ??
+            null,
+
+          name:
+            data.name ||
+            "",
+
+          department:
+            data.department ||
+            "",
+
+          tanggal:
+            data.tanggal ||
+            "",
+
+          benar:
+            data.benar ??
+            0,
+
+          total:
+            data.total ??
+            14,
+
+          nilai:
+            data.nilai ??
+            0,
+
+          score:
+            data.score ||
+            "",
+
+          details:
+            Array.isArray(data.details)
+              ? data.details
+              : [],
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
+
+    // DATA BERHASIL DISIMPAN
+
+    console.log("=================================");
+    console.log("DATA BERHASIL DISIMPAN");
+    console.log("=================================");
 
     console.log(
-      "Hasil Google:",
-      result
+      "Row:",
+      data.row
     );
+
+    console.log(
+      "Nama:",
+      data.name
+    );
+
+    console.log(
+      "Department:",
+      data.department
+    );
+
+    console.log(
+      "Tanggal:",
+      data.tanggal
+    );
+
+    console.log(
+      "Benar:",
+      data.benar
+    );
+
+    console.log(
+      "Total:",
+      data.total
+    );
+
+    console.log(
+      "Nilai:",
+      data.nilai
+    );
+
+    console.log(
+      "Details:",
+      data.details
+    );
+
+    console.log(
+      "=================================");
+
+
+    // KIRIM HASIL KEMBALI KE FRONTEND
 
     return NextResponse.json(
-      result
-    );
+      {
+        success: true,
 
+        message:
+          data.message ||
+          "Jawaban berhasil disimpan.",
+
+        row:
+          data.row ??
+          null,
+
+        name:
+          data.name ||
+          "",
+
+        department:
+          data.department ||
+          "",
+
+        tanggal:
+          data.tanggal ||
+          "",
+
+        benar:
+          data.benar ??
+          0,
+
+        total:
+          data.total ??
+          14,
+
+        nilai:
+          data.nilai ??
+          0,
+
+        score:
+          data.score ||
+          "",
+
+        details:
+          Array.isArray(data.details)
+            ? data.details
+            : [],
+      },
+      {
+        status: 200,
+      }
+    );
 
   } catch (error) {
 
+    // ERROR NEXT.JS
+
     console.error(
-      "ERROR API SUBMIT:"
+      "================================="
+    );
+
+    console.error(
+      "API SUBMIT ERROR"
     );
 
     console.error(
       error
+    );
+
+    console.error(
+      "================================="
     );
 
 
@@ -229,15 +331,16 @@ export async function POST(request: Request) {
         success: false,
 
         message:
+          "Gagal menghubungkan Next.js dengan Google Apps Script.",
+
+        detail:
           error instanceof Error
             ? error.message
-            : "Terjadi kesalahan pada server.",
-
+            : String(error),
       },
       {
         status: 500,
       }
     );
-
   }
 }
